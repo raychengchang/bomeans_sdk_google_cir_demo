@@ -14,9 +14,11 @@ import java.util.List;
 
 public class MainActivity extends Activity {
 
-    private String API_KEY = "36c3862a5dddca583f3fb7e8effb712c0540ff7de";
+    private String API_KEY = "";    // paste your Bomeans API Key here to access the Bomeans IR database
 
     private BIRReader mMyIrReader;
+
+    private TextView mInfoView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,7 +29,7 @@ public class MainActivity extends Activity {
 
         initializeIRReader();
 
-        final TextView infoView = (TextView) findViewById(R.id.text_info);
+        mInfoView = (TextView) findViewById(R.id.text_info);
 
         Button btnSend = (Button)findViewById(R.id.button_learn_ir);
         btnSend.setOnClickListener(new View.OnClickListener() {
@@ -56,12 +58,12 @@ public class MainActivity extends Activity {
                                 infoStr += result.modelID + "\n";
                             }
 
-                            infoView.setText(infoView.getText() + infoStr);
+                            mInfoView.setText(mInfoView.getText() + infoStr);
                         }
 
                         @Override
                         public void onRemoteMatchFailed(BIRReader.CloudMatchErrorCode cloudMatchErrorCode) {
-                            infoView.setText("No matched remote!");
+                            mInfoView.setText("No matched remote!");
                         }
 
                         @Override
@@ -71,12 +73,12 @@ public class MainActivity extends Activity {
                                 infoStr += String.format("%s, 0x%X, 0x%X\n", result.formatId, result.customCode, result.keyCode);
                             }
 
-                            infoView.setText(infoStr);
+                            mInfoView.setText(infoStr);
                         }
 
                         @Override
                         public void onFormatMatchFailed(BIRReader.FormatParsingErrorCode formatParsingErrorCode) {
-                            infoView.setText("No matched format!");
+                            mInfoView.setText("No matched format!");
                         }
                     });
                 }
@@ -104,6 +106,8 @@ public class MainActivity extends Activity {
             @Override
             public void onReaderCreateFailed() {
                 mMyIrReader = null;
+
+                mInfoView.setText("Cannot connect to Bomeans database.\n\n1. Check Internet connection.\n2. Check API Key in code.");
             }
         });
     }
