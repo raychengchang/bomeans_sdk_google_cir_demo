@@ -17,6 +17,7 @@ public class MainActivity extends Activity {
     private String API_KEY = "";    // paste your Bomeans API Key here to access the Bomeans IR database
 
     private BIRReader mMyIrReader;
+    private Button mBtnLearn;
 
     private TextView mInfoView;
 
@@ -25,13 +26,20 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mBtnLearn = (Button)findViewById(R.id.button_learn_ir);
+        Button btnSend = (Button)findViewById(R.id.button_learn_ir);
+        mInfoView = (TextView) findViewById(R.id.text_info);
+
+        mBtnLearn.setEnabled(false);
+        mInfoView.setText("Loading IR Reader data...");
+
         initializeBomeansSDK();
 
         initializeIRReader();
 
-        mInfoView = (TextView) findViewById(R.id.text_info);
 
-        Button btnSend = (Button)findViewById(R.id.button_learn_ir);
+
+
         btnSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -39,10 +47,12 @@ public class MainActivity extends Activity {
             }
         });
 
-        Button btnLearn = (Button)findViewById(R.id.button_learn_ir);
-        btnLearn.setOnClickListener(new View.OnClickListener() {
+        final Activity thisActiivity = this;
+        mBtnLearn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
+                mInfoView.setText("");
 
                 if (null != mMyIrReader)
                 {
@@ -51,34 +61,57 @@ public class MainActivity extends Activity {
                             BIRReader.PREFER_REMOTE_TYPE.TV, new BIRReader.BIRReaderRemoteMatchCallback() {
 
                         @Override
-                        public void onRemoteMatchSucceeded(List<BIRReader.RemoteMatchResult> list) {
+                        public void onRemoteMatchSucceeded(final List<BIRReader.RemoteMatchResult> list) {
 
-                            String infoStr = "\n\nMatched remote id:\n";
-                            for (BIRReader.RemoteMatchResult result : list) {
-                                infoStr += result.modelID + "\n";
-                            }
+                            thisActiivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    String infoStr = "\n\nMatched remote id:\n";
+                                    for (BIRReader.RemoteMatchResult result : list) {
+                                        infoStr += result.modelID + "\n";
+                                    }
+                                    mInfoView.setText(mInfoView.getText() + infoStr);
+                                }
+                            });
 
-                            mInfoView.setText(mInfoView.getText() + infoStr);
                         }
 
                         @Override
                         public void onRemoteMatchFailed(BIRReader.CloudMatchErrorCode cloudMatchErrorCode) {
-                            mInfoView.setText("No matched remote!");
+                            thisActiivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mInfoView.setText("No matched remote!");
+                                }
+                            });
+
                         }
 
                         @Override
-                        public void onFormatMatchSucceeded(List<BIRReader.ReaderMatchResult> list) {
-                            String infoStr = "Matched format:\n";
-                            for (BIRReader.ReaderMatchResult result : list) {
-                                infoStr += String.format("%s, 0x%X, 0x%X\n", result.formatId, result.customCode, result.keyCode);
-                            }
+                        public void onFormatMatchSucceeded(final List<BIRReader.ReaderMatchResult> list) {
 
-                            mInfoView.setText(infoStr);
+                            thisActiivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    String infoStr = "Matched format:\n";
+                                    for (BIRReader.ReaderMatchResult result : list) {
+                                        infoStr += String.format("%s, 0x%X, 0x%X\n", result.formatId, result.customCode, result.keyCode);
+                                    }
+                                    mInfoView.setText(infoStr);
+                                }
+                            });
+
                         }
 
                         @Override
                         public void onFormatMatchFailed(BIRReader.FormatParsingErrorCode formatParsingErrorCode) {
-                            mInfoView.setText("No matched format!");
+                            thisActiivity.runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mInfoView.setText("No matched format!");
+                                }
+                            });
+
                         }
                     });
                 }
@@ -101,6 +134,8 @@ public class MainActivity extends Activity {
             @Override
             public void onReaderCreated(BIRReader birReader) {
                 mMyIrReader = birReader;
+                mBtnLearn.setEnabled(true);
+                mInfoView.setText("");
             }
 
             @Override

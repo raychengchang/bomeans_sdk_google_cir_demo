@@ -3,7 +3,9 @@ package com.bomeans.bomeans_sdk_google_cir_demo;
 import android.content.Context;
 import android.hardware.ConsumerIrManager;
 
-import com.bomeans.IRKit.*;
+import com.bomeans.IRKit.BIRIrHW;
+import com.bomeans.IRKit.BIRReceiveDataCallback2;
+import com.bomeans.IRKit.IRKit;
 
 import java.util.ArrayList;
 
@@ -52,20 +54,29 @@ public class MyCIRDevice implements BIRIrHW {
 
         if (commandID == 0x30) { // if it's switching learning mode command
 
-            // synchronous call, better run it in another thread since this may take 15 seconds before timeout
-            MyLearningResult result = consumerIRLearn();
+            Thread thread = new Thread() {
+                @Override
+                public void run() {
+                    // synchronous call, better run it in another thread since this may take 15 seconds before timeout
+                    CirLearnResult cirLearnResult = learn();
 
-            if (result == null) {
-                // failed
-                mCallback.onLearningFailed();
-            }
-            else {
-                // succeeded
-                mCallback.onLearningDataReceived(result.frequency, result.pattern);
-            }
+                    if (cirLearnResult == null) {
+                        // failed
+                        mCallback.onLearningFailed();
+                    }
+                    else {
+                        // succeeded
+                        mCallback.onLearningDataReceived(cirLearnResult.getFrequency(), cirLearnResult.getPattern());
+                    }
+                }
+            };
+
+            thread.start();
 
         } else {
             // there may be other command such as reading firmware version, but we just ignore them all
+            // return an invalid packet since the SDK may be waiting for a response.
+            mCallback.onDataReceived(new byte[] {(byte)0xFF, 0x61, 0x00, 0x02, 0x00, (byte)0xFF, 0x01, (byte)0xF0} );
         }
 
         return IRKit.BIROK;
@@ -89,19 +100,17 @@ public class MyCIRDevice implements BIRIrHW {
     }
 
     // this class just simulate the returned ir learning data structure (ir learning result)
-    private MyLearningResult consumerIRLearn() {
+    private CirLearnResult learn() {
+
         try {
             Thread.sleep(2000); // simulate the waiting time for IR signals
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
-        MyLearningResult result = new MyLearningResult();
-        result.frequency = 38000;
-        result.pattern = new int[]
+        int[] pattern = new int[]
                 { 3370,1680,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,1260,420,1260,420,1260,420,1260,420,420,420,420,420,1260,420,420,420,1260,420,1260,420,1260,420,1260,420,420,420,1260,420,67450,3370,1680,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,420,1260,420,420,420,1260,420,1260,420,1260,420,1260,420,420,420,420,420,1260,420,420,420,1260,420,1260,420,1260,420,1260,420,420,420,1260,420,67450};
-
-        result.len = result.pattern.length;
+        CirLearnResult result = new CirLearnResult(pattern.length, 3800, pattern);
 
         return result;
     }
@@ -143,9 +152,35 @@ public class MyCIRDevice implements BIRIrHW {
         return data[5];
     }
 
-    class MyLearningResult {
-        public int len;
-        public int frequency;
-        public int[] pattern;
+    class CirLearnResult {
+        private int mFrequency = 0;
+        private int[] mPattern = null;
+
+        public CirLearnResult(int length, int freq, int[] cirPattern) {
+
+            if (length < cirPattern.length)
+            {
+                mPattern = new int[length];
+                System.arraycopy(cirPattern, 0, mPattern, 0, length);
+            } else
+            {
+                mPattern = cirPattern;
+            }
+            mFrequency = freq;
+            mPattern = cirPattern;
+        }
+
+        public int getFrequency() { return mFrequency; }
+
+        public int getLength() {
+            if (null != mPattern) {
+                return mPattern.length;
+            } else {
+                return 0;
+            }
+        }
+
+        public int[] getPattern() { return mPattern; }
+
     }
 }
